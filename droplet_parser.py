@@ -121,7 +121,6 @@ if __name__ == '__main__':
     parser.add_argument('-pages', action="store", dest="pages", type=int, nargs='?', const=1, default=1)
     args = parser.parse_args()
 
-#    link = "https://api.digitalocean.com/v2/droplets?page=1&per_page=999"
     link = []
     for item in range(1,args.pages+1): 
         link.append("https://api.digitalocean.com/v2/droplets?page=" + str(item) + "&per_page=999")

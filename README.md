@@ -44,6 +44,13 @@ Output format:
       { <droplet_name>: [<size>, <public ip>, <droplet id> ] }
 ```
 
+- Execute to generate inventory list of droplets with volumes for your account:
+```sh
+$ python droplet_parser.py -volumes
+Output format:
+      { <droplet_name>: [[<list_of_volume_ids>], <droplet id> ] }
+```
+
 ## Additional options
 
 For large infrastructures you may use *-pages* argument with any other arguments, it works like you turn the pages in yout Digital Ocean web console. By default there is 1 page with 999 items on it, as far as I know it is maximum default.

@@ -8,6 +8,8 @@
 #   Usage example: python droplet_parser.py -f webserver-
 # - Fetch DigitalOcean inventory dictionary for account
 #   Usage example: python droplet_parser.py -list
+# - Fetch DigitalOcean inventory dictionary of droplets with volumes for account
+#   Usage example: python droplet_parser.py -volumes
 # - Handle as many DigitalOcean pages as needed, for large projects.
 #   Usage example: python droplet_parser.py -list -pages <number>
 #
@@ -112,12 +114,41 @@ def get_private_ip(templates,criteria):
                             else:
                                 dict[j[k].encode('ascii')] = [j['networks']['v4'][0]['ip_address'].encode('ascii')]
     return(dict)
+
+def get_map_volumes(templates):
+    '''
+    function to get droplets and volumes mapped with it from DigitalOcean
+    '''
+    hostname = {}   
+    for i in templates:
+        # j is a json dict of each droplet data
+        for j in templates[i]:
+            try:
+                inventory = []
+                for k in j:
+                    if k in ('name'):
+                        key = j[k].encode('ascii')
+                    elif k in ('id'):
+                        inventory.append(j[k])
+                    elif k in ('volume_ids'):
+                        if len(j[k]) > 0:
+                            # encode volumes list and append it as an item to dict values list
+                            inventory.append([x.encode('ascii') for x in j[k]])                 
+                if key not in hostname:
+                    hostname[key] = inventory
+                else:
+                    hostname[key].append(inventory)
+            except TypeError:
+                continue
+    hostname_vol = {k : v for k,v in hostname.iteritems() if len(v) > 1 and type(v[0]) == list}
+    return(hostname_vol)
 	
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Digital Ocean droplets parse script')
     parser.add_argument('-ip', action="store", dest="ip")
     parser.add_argument('-f', action="store", dest="filter")
     parser.add_argument('-list', action='store_true')
+    parser.add_argument('-volumes', action='store_true')
     parser.add_argument('-pages', action="store", dest="pages", type=int, nargs='?', const=1, default=1)
     args = parser.parse_args()
 
@@ -154,5 +185,13 @@ if __name__ == '__main__':
         for k in link:
             hosts.update(get_inventory(get_nest_data(k,api_key)))
         pprint(hosts)
+    elif args.volumes:
+        map_volumes = {}
+        for k in link:
+            map_volumes.update(get_map_volumes(get_nest_data(k,api_key)))
+        if map_volumes:
+            pprint(map_volumes)
+        else:
+            print("No droplets with volumes found in your account.")
     else:
         print('Please pass -ip or -f or -list as input parameter')

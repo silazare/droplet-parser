@@ -8,8 +8,13 @@
 #   Usage example: python droplet_parser.py -f webserver-
 # - Fetch DigitalOcean inventory dictionary for account
 #   Usage example: python droplet_parser.py -list
+# - Fetch DigitalOcean simple public iplist for account
+#   Usage example: python droplet_parser.py -iplist
 # - Fetch DigitalOcean inventory dictionary of droplets with volumes for account
 #   Usage example: python droplet_parser.py -volumes
+# - Fetch DigitalOcean inventory dictionary of droplets images for account
+#   Usage example: python droplet_parser.py -images
+#
 # - Handle as many DigitalOcean pages as needed, for large projects.
 #   Usage example: python droplet_parser.py -list -pages <number>
 #
@@ -142,19 +147,51 @@ def get_map_volumes(templates):
                 continue
     hostname_vol = {k : v for k,v in hostname.iteritems() if len(v) > 1 and type(v[0]) == list}
     return(hostname_vol)
+
+def get_images(templates):
+    '''
+    function to get all images inventory from DigitalOcean
+    '''
+    image = {}   
+    for i in templates:
+        # j is a json dict of each droplet data
+        for j in templates[i]:
+            try:
+                inventory = []
+                for k in j:
+                    if k in ('name'):
+                        key = j[k].encode('ascii')
+                    elif k in ('id', 'distribution','type'):
+                        try:
+                            inventory.append(j[k].encode('ascii'))
+                        except AttributeError:
+                            inventory.append(j[k])                         
+                if key not in image:
+                    image[key] = inventory
+                else:
+                    image[key].append(inventory)
+            except TypeError:
+                continue
+    return(image)
 	
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Digital Ocean droplets parse script')
     parser.add_argument('-ip', action="store", dest="ip")
     parser.add_argument('-f', action="store", dest="filter")
-    parser.add_argument('-list', action='store_true')
-    parser.add_argument('-volumes', action='store_true')
+    parser.add_argument('-list', action='store_true', dest="list")
+    parser.add_argument('-iplist', action='store_true', dest="iplist")
+    parser.add_argument('-images', action='store_true', dest="images")    
+    parser.add_argument('-volumes', action='store_true', dest="volumes")
     parser.add_argument('-pages', action="store", dest="pages", type=int, nargs='?', const=1, default=1)
     args = parser.parse_args()
 
     link = []
     for item in range(1,args.pages+1): 
         link.append("https://api.digitalocean.com/v2/droplets?page=" + str(item) + "&per_page=999")
+
+    link_img = []
+    for item in range(1,args.pages+1): 
+        link_img.append("https://api.digitalocean.com/v2/images?private=true&page=" + str(item) + "&per_page=999")
 
     if args.ip is not None:
         result = None
@@ -169,7 +206,7 @@ if __name__ == '__main__':
         except TypeError:
             pass
         if result is None:
-            print("No such droplet found in your account.")
+            print("No such droplet IP address found in your account.")
         else:
             print(result)
     elif args.filter is not None:
@@ -177,21 +214,45 @@ if __name__ == '__main__':
         for k in link:
             droplets.update(get_private_ip(get_nest_data(k,api_key),args.filter))
         if droplets:
-            pprint(droplets)
+            for k, v in droplets.iteritems():
+                print ('{0:<45}  {1:^10}'.format(k, v))
         else:
             print("No such droplet name found in your account.")
     elif args.list:
         hosts = {}
         for k in link:
             hosts.update(get_inventory(get_nest_data(k,api_key)))
-        pprint(hosts)
+        if hosts:
+            for k, v in hosts.iteritems():
+                print ('{0:<45}  {1:^10}'.format(k, v))
+        else:
+            print("No droplets found in your account.")            
+    elif args.iplist:
+        hosts = {}
+        for k in link:
+            hosts.update(get_inventory(get_nest_data(k,api_key)))
+        if hosts:
+            for k, v in hosts.iteritems():
+                print ('{0:<45}  {1:^10}'.format(k, v[1]))
+        else:
+            print("No droplets found in your account.") 
     elif args.volumes:
         map_volumes = {}
         for k in link:
             map_volumes.update(get_map_volumes(get_nest_data(k,api_key)))
         if map_volumes:
-            pprint(map_volumes)
+            for k, v in map_volumes.iteritems():
+                print ('{0:<45}  {1:^10}'.format(k, v))
         else:
             print("No droplets with volumes found in your account.")
+    elif args.images:
+        images = {}
+        for k in link_img:
+            images.update(get_images(get_nest_data(k,api_key)))
+        if images:
+            for k, v in images.iteritems():
+                print ('{0:<45}  {1:^10}'.format(k, v))
+        else:
+            print("No custom droplet images found in your account.")
     else:
-        print('Please pass -ip or -f or -list as input parameter')
+        print('Please pass correct input parameter')

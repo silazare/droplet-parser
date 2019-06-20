@@ -61,6 +61,9 @@ def get_nest_data(url,token):
                 return api_response.json()
         elif init_res.status_code == 200:
             return init_res.json()
+        elif init_res.status_code == 401:
+            print('Unauthorized API request, check your DO_API_TOKEN')
+            sys.exit(0)
     except Exception as ce:
         print(ce)
 
